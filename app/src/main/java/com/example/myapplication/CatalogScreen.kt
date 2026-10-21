@@ -1,6 +1,8 @@
 
 package com.example.myapplication
 
+import android.util.Log
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
@@ -15,9 +17,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.Locale
 
 private val VinhoCatalogo = Color(0xFF9D2438)
@@ -42,17 +49,72 @@ fun CatalogScreen(
         mutableStateOf(true)
     }
 
+    // Lista carregada do banco
+    var produtos by remember {
+        mutableStateOf<List<Produto>>(emptyList())
+    }
+
+    var carregando by remember {
+        mutableStateOf(true)
+    }
+
+    var excluindoId by remember {
+        mutableStateOf<Int?>(null)
+    }
+
+    val context = LocalContext.current
+    val produtoDao = remember(context) {
+        AppDatabase.getDatabase(context).produtoDao()
+    }
+
+    LaunchedEffect(Unit) {
+        carregando = true
+
+        try {
+            val lista = withContext(Dispatchers.IO) {
+                produtoDao.buscarTodos()
+            }
+
+            produtos = lista
+
+            DadosProdutos.produtos.clear()
+            DadosProdutos.produtos.addAll(lista)
+
+        } catch (e: Exception) {
+            Log.e(
+                "RoomProduto",
+                "Erro ao buscar produtos",
+                e
+            )
+
+            Toast.makeText(
+                context,
+                "Erro ao carregar produtos!",
+                Toast.LENGTH_SHORT
+            ).show()
+
+        } finally {
+            carregando = false
+        }
+    }
+
     val categorias = (
             listOf("Todos", "Eletrônicos", "Casa", "Beleza") +
-                    DadosProdutos.produtos.map { it.categoria }
+                    produtos.map { it.categoria }
             ).distinct()
 
-    val produtosFiltrados = DadosProdutos.produtos
+    val produtosFiltrados = produtos
         .filter { produto ->
 
             val correspondePesquisa =
-                produto.nome.contains(pesquisa, ignoreCase = true) ||
-                        produto.categoria.contains(pesquisa, ignoreCase = true)
+                produto.nome.contains(
+                    pesquisa,
+                    ignoreCase = true
+                ) ||
+                        produto.categoria.contains(
+                            pesquisa,
+                            ignoreCase = true
+                        )
 
             val correspondeCategoria =
                 categoriaSelecionada == "Todos" ||
@@ -137,6 +199,7 @@ fun CatalogScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
+
             Text(
                 text = "${produtosFiltrados.size} produto(s)",
                 fontSize = 14.sp,
@@ -185,7 +248,18 @@ fun CatalogScreen(
 
         Spacer(Modifier.height(14.dp))
 
-        if (produtosFiltrados.isEmpty()) {
+        if (carregando) {
+
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(
+                    color = VinhoCatalogo
+                )
+            }
+
+        } else if (produtosFiltrados.isEmpty()) {
 
             Column(
                 modifier = Modifier
@@ -193,6 +267,7 @@ fun CatalogScreen(
                     .padding(top = 35.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
+
                 Text(
                     text = "Nenhum produto encontrado.",
                     color = Color.Gray
@@ -214,6 +289,7 @@ fun CatalogScreen(
                 verticalArrangement = Arrangement.spacedBy(10.dp),
                 contentPadding = PaddingValues(bottom = 16.dp)
             ) {
+
                 items(
                     items = produtosFiltrados,
                     key = { it.id }
@@ -232,6 +308,7 @@ fun CatalogScreen(
                             defaultElevation = 2.dp
                         )
                     ) {
+
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -260,6 +337,7 @@ fun CatalogScreen(
                             Column(
                                 modifier = Modifier.weight(1f)
                             ) {
+
                                 Text(
                                     text = produto.nome,
                                     fontWeight = FontWeight.Bold,
@@ -287,10 +365,54 @@ fun CatalogScreen(
                             }
 
                             IconButton(
+                                enabled = excluindoId == null,
                                 onClick = {
-                                    DadosProdutos.remover(produto)
+                                    excluindoId = produto.id
+
+                                    CoroutineScope(Dispatchers.IO).launch {
+                                        try {
+                                            produtoDao.deletar(produto)
+
+                                            val lista = produtoDao.buscarTodos()
+
+                                            withContext(Dispatchers.Main) {
+                                                produtos = lista
+
+                                                DadosProdutos.produtos.clear()
+                                                DadosProdutos.produtos.addAll(lista)
+
+                                                DadosCarrinho.remover(produto.id)
+
+                                                excluindoId = null
+
+                                                Toast.makeText(
+                                                    context,
+                                                    "Produto removido!",
+                                                    Toast.LENGTH_SHORT
+                                                ).show()
+                                            }
+
+                                        } catch (e: Exception) {
+                                            Log.e(
+                                                "RoomProduto",
+                                                "Erro ao excluir produto",
+                                                e
+                                            )
+
+                                            withContext(Dispatchers.Main) {
+                                                excluindoId = null
+
+                                                Toast.makeText(
+                                                    context,
+                                                    "Erro ao excluir produto!",
+                                                    Toast.LENGTH_SHORT
+                                                ).show()
+                                            }
+                                        }
+                                    }
                                 }
                             ) {
+
                                 Icon(
                                     imageVector = Icons.Default.Delete,
                                     contentDescription = "Excluir produto",

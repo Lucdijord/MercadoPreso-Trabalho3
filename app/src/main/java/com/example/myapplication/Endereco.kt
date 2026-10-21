@@ -2,9 +2,13 @@
 package com.example.myapplication
 
 import androidx.compose.runtime.mutableStateListOf
+import androidx.room.Entity
+import androidx.room.PrimaryKey
 
+@Entity(tableName = "enderecos")
 data class Endereco(
-    val id: Int,
+    @PrimaryKey(autoGenerate = true)
+    val id: Int = 0,
     val rua: String,
     val numero: String,
     val bairro: String,

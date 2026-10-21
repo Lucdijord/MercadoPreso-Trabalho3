@@ -1,12 +1,11 @@
 
 package com.example.myapplication
 
+import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -15,125 +14,241 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DetalheEnderecoScreen(
     enderecoId: Int,
     onVoltar: () -> Unit
 ) {
+    val context = LocalContext.current
+    val vinho = Color(0xFF9D2438)
 
-    val endereco = DadosEnderecos.enderecos.find {
-        it.id == enderecoId
+    val enderecoDao = remember(context) {
+        AppDatabase.getDatabase(context).enderecoDao()
+    }
+
+    var endereco by remember(enderecoId) {
+        mutableStateOf<Endereco?>(null)
     }
 
     var complemento by remember(enderecoId) {
-        mutableStateOf(endereco?.complemento ?: "")
+        mutableStateOf("")
     }
 
-    val context = LocalContext.current
+    var carregando by remember(enderecoId) {
+        mutableStateOf(true)
+    }
 
-    Scaffold() { padding ->
+    var salvando by remember {
+        mutableStateOf(false)
+    }
 
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
+    LaunchedEffect(enderecoId) {
+        carregando = true
 
-            if (endereco == null) {
+        try {
+            val resultado = withContext(Dispatchers.IO) {
+                enderecoDao.buscarPorId(enderecoId)
+            }
 
-                Text("Endereço não encontrado.")
+            endereco = resultado
 
-                Button(onClick = onVoltar) {
-                    Text("Voltar")
-                }
+            if (resultado != null) {
+                complemento = resultado.complemento
+            }
 
-            } else {
+        } catch (e: Exception) {
+            Log.e(
+                "RoomEndereco",
+                "Erro ao buscar endereço",
+                e
+            )
 
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = Color(0xFFF5F5F5)
-                    )
+            Toast.makeText(
+                context,
+                "Erro ao carregar endereço!",
+                Toast.LENGTH_SHORT
+            ).show()
+
+        } finally {
+            carregando = false
+        }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+
+        if (carregando) {
+
+            CircularProgressIndicator(
+                color = vinho
+            )
+
+        } else if (endereco == null) {
+
+            Text("Endereço não encontrado.")
+
+            Button(
+                onClick = onVoltar,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = vinho
+                )
+            ) {
+                Text("Voltar")
+            }
+
+        } else {
+
+            val enderecoAtual = endereco!!
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color.White
+                ),
+                elevation = CardDefaults.cardElevation(
+                    defaultElevation = 2.dp
+                )
+            ) {
+
+                Column(
+                    modifier = Modifier.padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
 
-                    Column(
-                        modifier = Modifier.padding(20.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
+                    Text(
+                        text = enderecoAtual.rua,
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold
+                    )
 
-                        Text(
-                            text = endereco.rua,
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.Bold
-                        )
+                    HorizontalDivider()
 
-                        HorizontalDivider()
+                    Text(
+                        text = "Número: ${enderecoAtual.numero}"
+                    )
 
-                        Text(
-                            text = "Número: ${endereco.numero}"
-                        )
+                    Text(
+                        text = "Bairro: ${enderecoAtual.bairro}"
+                    )
 
-                        Text(
-                            text = "Bairro: ${endereco.bairro}"
-                        )
+                    Text(
+                        text = "Cidade: ${enderecoAtual.cidade}"
+                    )
 
-                        Text(
-                            text = "Cidade: ${endereco.cidade}"
-                        )
+                    Text(
+                        text = "Complemento: " +
+                                enderecoAtual.complemento.ifBlank {
+                                    "Não informado"
+                                }
+                    )
+                }
+            }
 
-                        Text(
-                            text = "Complemento: " +
-                                    endereco.complemento.ifBlank {
-                                        "Não informado"
+            Text(
+                text = "Editar Complemento",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold
+            )
+
+            OutlinedTextField(
+                value = complemento,
+                onValueChange = {
+                    complemento = it
+                },
+                label = {
+                    Text("Complemento do endereço")
+                },
+                modifier = Modifier.fillMaxWidth(),
+                minLines = 2,
+                enabled = !salvando
+            )
+
+            Button(
+                onClick = {
+
+                    salvando = true
+
+                    val enderecoAtualizado = enderecoAtual.copy(
+                        complemento = complemento.trim()
+                    )
+
+                    CoroutineScope(Dispatchers.IO).launch {
+
+                        try {
+                            enderecoDao.atualizar(
+                                enderecoAtualizado
+                            )
+
+                            withContext(Dispatchers.Main) {
+
+                                // Atualiza a lista auxiliar
+                                val indice =
+                                    DadosEnderecos.enderecos.indexOfFirst {
+                                        it.id == enderecoId
                                     }
-                        )
+
+                                if (indice >= 0) {
+                                    DadosEnderecos.enderecos[indice] =
+                                        enderecoAtualizado
+                                }
+
+                                endereco = enderecoAtualizado
+                                salvando = false
+
+                                Toast.makeText(
+                                    context,
+                                    "Endereço atualizado!",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+
+                                onVoltar()
+                            }
+
+                        } catch (e: Exception) {
+
+                            Log.e(
+                                "RoomEndereco",
+                                "Erro ao atualizar endereço",
+                                e
+                            )
+
+                            withContext(Dispatchers.Main) {
+
+                                salvando = false
+
+                                Toast.makeText(
+                                    context,
+                                    "Erro ao atualizar endereço!",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        }
                     }
-                }
-
+                },
+                enabled = !salvando,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = vinho,
+                    contentColor = Color.White
+                )
+            ) {
                 Text(
-                    text = "Editar Complemento",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold
+                    if (salvando) {
+                        "Salvando..."
+                    } else {
+                        "Salvar Alteração"
+                    }
                 )
-
-                OutlinedTextField(
-                    value = complemento,
-                    onValueChange = { complemento = it },
-                    label = {
-                        Text("Complemento do endereço")
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    minLines = 2
-                )
-
-                Button(
-                    onClick = {
-
-                        DadosEnderecos.atualizarComplemento(
-                            enderecoId,
-                            complemento.trim()
-                        )
-
-                        Toast.makeText(
-                            context,
-                            "Endereço atualizado!",
-                            Toast.LENGTH_SHORT
-                        ).show()
-
-                        onVoltar()
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFFA62A2A)
-                    )
-                ) {
-                    Text("Salvar Alteração")
-                }
             }
         }
     }

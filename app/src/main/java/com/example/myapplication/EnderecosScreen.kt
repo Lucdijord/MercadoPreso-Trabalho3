@@ -1,5 +1,8 @@
+
 package com.example.myapplication
 
+import android.util.Log
+import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -7,13 +10,18 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 fun EnderecosScreen(
@@ -22,6 +30,51 @@ fun EnderecosScreen(
     onVoltar: () -> Unit
 ) {
     val vinho = Color(0xFF9D2438)
+    val context = LocalContext.current
+
+    val enderecoDao = remember(context) {
+        AppDatabase.getDatabase(context).enderecoDao()
+    }
+
+    // Lista auxiliar sincronizada com o Room
+    val enderecos = DadosEnderecos.enderecos
+
+    var carregando by remember {
+        mutableStateOf(true)
+    }
+
+    var removendoId by remember {
+        mutableStateOf<Int?>(null)
+    }
+
+    LaunchedEffect(Unit) {
+        carregando = true
+
+        try {
+            val lista = withContext(Dispatchers.IO) {
+                enderecoDao.buscarTodos()
+            }
+
+            enderecos.clear()
+            enderecos.addAll(lista)
+
+        } catch (e: Exception) {
+            Log.e(
+                "RoomEndereco",
+                "Erro ao buscar endereços",
+                e
+            )
+
+            Toast.makeText(
+                context,
+                "Erro ao carregar endereços!",
+                Toast.LENGTH_SHORT
+            ).show()
+
+        } finally {
+            carregando = false
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -50,7 +103,18 @@ fun EnderecosScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        if (DadosEnderecos.enderecos.isEmpty()) {
+        if (carregando) {
+
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(
+                    color = vinho
+                )
+            }
+
+        } else if (enderecos.isEmpty()) {
 
             Text(
                 text = "Nenhum endereço cadastrado.",
@@ -63,8 +127,9 @@ fun EnderecosScreen(
                 verticalArrangement = Arrangement.spacedBy(10.dp),
                 contentPadding = PaddingValues(bottom = 16.dp)
             ) {
+
                 items(
-                    items = DadosEnderecos.enderecos,
+                    items = enderecos,
                     key = { it.id }
                 ) { endereco ->
 
@@ -81,6 +146,7 @@ fun EnderecosScreen(
                             defaultElevation = 2.dp
                         )
                     ) {
+
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -91,13 +157,16 @@ fun EnderecosScreen(
                             Column(
                                 modifier = Modifier.weight(1f)
                             ) {
+
                                 Text(
                                     text = endereco.rua,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 16.sp
                                 )
 
-                                Spacer(modifier = Modifier.height(4.dp))
+                                Spacer(
+                                    modifier = Modifier.height(4.dp)
+                                )
 
                                 Text(
                                     text = "Nº ${endereco.numero}"
@@ -114,10 +183,54 @@ fun EnderecosScreen(
                             }
 
                             IconButton(
+                                enabled = removendoId == null,
                                 onClick = {
-                                    DadosEnderecos.remover(endereco)
+                                    removendoId = endereco.id
+
+                                    CoroutineScope(Dispatchers.IO).launch {
+
+                                        try {
+                                            enderecoDao.deletar(endereco)
+
+                                            val lista = enderecoDao.buscarTodos()
+
+                                            withContext(Dispatchers.Main) {
+
+                                                enderecos.clear()
+                                                enderecos.addAll(lista)
+
+                                                removendoId = null
+
+                                                Toast.makeText(
+                                                    context,
+                                                    "Endereço removido!",
+                                                    Toast.LENGTH_SHORT
+                                                ).show()
+                                            }
+
+                                        } catch (e: Exception) {
+
+                                            Log.e(
+                                                "RoomEndereco",
+                                                "Erro ao remover endereço",
+                                                e
+                                            )
+
+                                            withContext(Dispatchers.Main) {
+
+                                                removendoId = null
+
+                                                Toast.makeText(
+                                                    context,
+                                                    "Erro ao remover endereço!",
+                                                    Toast.LENGTH_SHORT
+                                                ).show()
+                                            }
+                                        }
+                                    }
                                 }
                             ) {
+
                                 Icon(
                                     imageVector = Icons.Default.Delete,
                                     contentDescription = "Remover endereço",
