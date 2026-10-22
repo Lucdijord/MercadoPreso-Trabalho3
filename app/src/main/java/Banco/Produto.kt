@@ -1,9 +1,9 @@
-
-package com.example.myapplication
+package Banco
 
 import androidx.compose.runtime.mutableStateListOf
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import com.example.myapplication.DadosCarrinho
 
 @Entity(tableName = "produtos")
 data class Produto (

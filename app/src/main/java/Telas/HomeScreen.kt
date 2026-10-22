@@ -1,11 +1,14 @@
+package Telas
 
-package com.example.myapplication
-
+import Banco.AppDatabase
+import Banco.DadosProdutos
+import Banco.Produto
 import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -26,10 +29,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.myapplication.R
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.Locale
-import com.example.myapplication.R
 
 private val VinhoHome = Color(0xFF9D2438)
 private val FundoHome = Color(0xFFFFF8F5)
@@ -150,7 +153,7 @@ fun HomeScreen(
             },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
-            shape = androidx.compose.foundation.shape.RoundedCornerShape(15.dp),
+            shape = RoundedCornerShape(15.dp),
             keyboardOptions = KeyboardOptions(
                 imeAction = ImeAction.Search
             ),

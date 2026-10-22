@@ -1,5 +1,4 @@
-
-package com.example.myapplication
+package Banco
 
 import android.content.Context
 import androidx.room.Database

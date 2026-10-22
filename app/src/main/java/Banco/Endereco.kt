@@ -1,5 +1,4 @@
-
-package com.example.myapplication
+package Banco
 
 import androidx.compose.runtime.mutableStateListOf
 import androidx.room.Entity

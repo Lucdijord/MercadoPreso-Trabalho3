@@ -1,6 +1,15 @@
 
 package com.example.myapplication
 
+import Telas.AdicionarEnderecoScreen
+import Telas.AdicionarProdutoScreen
+import Telas.CarrinhoScreen
+import Telas.CatalogScreen
+import Telas.DetalheEnderecoScreen
+import Telas.DetalheProdutoScreen
+import Telas.EnderecosScreen
+import Telas.HomeScreen
+import Telas.ProfileScreen
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -18,9 +27,6 @@ import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import androidx.navigation.compose.*
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.ShoppingCart
-import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
