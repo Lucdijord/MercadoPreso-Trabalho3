@@ -1,28 +1,35 @@
 
 package com.example.myapplication
 
+import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.ShoppingBag
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.util.Locale
+import com.example.myapplication.R
 
 private val VinhoHome = Color(0xFF9D2438)
 private val FundoHome = Color(0xFFFFF8F5)
@@ -34,7 +41,47 @@ fun HomeScreen(
     onCategoriaClick: (String) -> Unit,
     onProdutoClick: (Int) -> Unit
 ) {
-    var pesquisa by remember { mutableStateOf("") }
+    var pesquisa by remember {
+        mutableStateOf("")
+    }
+
+    var produtos by remember {
+        mutableStateOf<List<Produto>>(emptyList())
+    }
+
+    var carregando by remember {
+        mutableStateOf(true)
+    }
+
+    val context = LocalContext.current
+
+    val produtoDao = remember(context) {
+        AppDatabase.getDatabase(context).produtoDao()
+    }
+
+    LaunchedEffect(Unit) {
+        carregando = true
+
+        try {
+            val lista = withContext(Dispatchers.IO) {
+                produtoDao.buscarTodos()
+            }
+
+            produtos = lista
+
+            DadosProdutos.produtos.clear()
+            DadosProdutos.produtos.addAll(lista)
+
+        } catch (e: Exception) {
+            Log.e(
+                "RoomProduto",
+                "Erro ao carregar produtos da Home",
+                e
+            )
+        } finally {
+            carregando = false
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -43,8 +90,6 @@ fun HomeScreen(
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 20.dp, vertical = 22.dp)
     ) {
-
-        // Saudação e logo
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -76,16 +121,17 @@ fun HomeScreen(
 
         Spacer(Modifier.height(20.dp))
 
-        // Pesquisa
         OutlinedTextField(
             value = pesquisa,
-            onValueChange = { pesquisa = it },
+            onValueChange = {
+                pesquisa = it
+            },
             placeholder = {
                 Text("Buscar no catálogo")
             },
             leadingIcon = {
                 Icon(
-                    Icons.Default.Search,
+                    imageVector = Icons.Default.Search,
                     contentDescription = null
                 )
             },
@@ -96,7 +142,7 @@ fun HomeScreen(
                     }
                 ) {
                     Icon(
-                        Icons.Default.ArrowForward,
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                         contentDescription = "Pesquisar",
                         tint = VinhoHome
                     )
@@ -117,7 +163,6 @@ fun HomeScreen(
 
         Spacer(Modifier.height(22.dp))
 
-        // Banner de ofertas
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = androidx.compose.foundation.shape.RoundedCornerShape(22.dp),
@@ -165,9 +210,11 @@ fun HomeScreen(
                     )
                 ) {
                     Text("Explorar catálogo")
+
                     Spacer(Modifier.width(8.dp))
+
                     Icon(
-                        Icons.Default.ShoppingBag,
+                        imageVector = Icons.Default.ShoppingBag,
                         contentDescription = null,
                         modifier = Modifier.size(18.dp)
                     )
@@ -228,7 +275,9 @@ fun HomeScreen(
                 fontWeight = FontWeight.Bold
             )
 
-            TextButton(onClick = onCatalogoClick) {
+            TextButton(
+                onClick = onCatalogoClick
+            ) {
                 Text(
                     text = "Ver todos",
                     color = VinhoHome
@@ -238,81 +287,86 @@ fun HomeScreen(
 
         Spacer(Modifier.height(8.dp))
 
-        val destaques = DadosProdutos.produtos.take(3)
-
-        if (destaques.isEmpty()) {
-            Text("Nenhum produto disponível.")
+        if (carregando) {
+            CircularProgressIndicator(
+                color = VinhoHome
+            )
         } else {
-            destaques.forEach { produto ->
-                Card(
-                    onClick = {
-                        onProdutoClick(produto.id)
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 10.dp),
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(17.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = Color.White
-                    ),
-                    elevation = CardDefaults.cardElevation(
-                        defaultElevation = 2.dp
-                    )
-                ) {
-                    Row(
-                        modifier = Modifier.padding(14.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
+            val destaques = produtos.take(3)
 
-                        Box(
-                            modifier = Modifier
-                                .size(58.dp)
-                                .background(
-                                    Color(0xFFF9E8EB),
-                                    androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                Icons.Default.ShoppingBag,
-                                contentDescription = null,
-                                tint = VinhoHome,
-                                modifier = Modifier.size(28.dp)
-                            )
-                        }
-
-                        Column(
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text(
-                                text = produto.nome,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 15.sp
-                            )
-
-                            Text(
-                                text = produto.categoria,
-                                color = Color.Gray,
-                                fontSize = 12.sp
-                            )
-
-                            Text(
-                                text = String.format(
-                                    Locale.forLanguageTag("pt-BR"),
-                                    "R$ %.2f",
-                                    produto.preco
-                                ),
-                                color = VinhoHome,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-
-                        Icon(
-                            Icons.Default.ChevronRight,
-                            contentDescription = null,
-                            tint = VinhoHome
+            if (destaques.isEmpty()) {
+                Text("Nenhum produto disponível.")
+            } else {
+                destaques.forEach { produto ->
+                    Card(
+                        onClick = {
+                            onProdutoClick(produto.id)
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 10.dp),
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(17.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color.White
+                        ),
+                        elevation = CardDefaults.cardElevation(
+                            defaultElevation = 2.dp
                         )
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(58.dp)
+                                    .background(
+                                        Color(0xFFF9E8EB),
+                                        androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.ShoppingBag,
+                                    contentDescription = null,
+                                    tint = VinhoHome,
+                                    modifier = Modifier.size(28.dp)
+                                )
+                            }
+
+                            Column(
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(
+                                    text = produto.nome,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 15.sp
+                                )
+
+                                Text(
+                                    text = produto.categoria,
+                                    color = Color.Gray,
+                                    fontSize = 12.sp
+                                )
+
+                                Text(
+                                    text = String.format(
+                                        Locale.forLanguageTag("pt-BR"),
+                                        "R$ %.2f",
+                                        produto.preco
+                                    ),
+                                    color = VinhoHome,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+
+                            Icon(
+                                imageVector = Icons.Default.ChevronRight,
+                                contentDescription = null,
+                                tint = VinhoHome
+                            )
+                        }
                     }
                 }
             }

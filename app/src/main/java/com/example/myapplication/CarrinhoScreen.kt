@@ -1,6 +1,7 @@
 
 package com.example.myapplication
 
+import android.util.Log
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -9,13 +10,16 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ShoppingBag
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.util.Locale
 
 @Composable
@@ -25,9 +29,50 @@ fun CarrinhoScreen(
 ) {
     val itens = DadosCarrinho.itens
     val formatoBrasil = Locale.forLanguageTag("pt-BR")
+    val vinho = Color(0xFF9D2438)
 
-    val produtosRecomendados = DadosProdutos.produtos.filter { produto ->
-        itens.none { it.produto.id == produto.id }
+    val context = LocalContext.current
+
+    val produtoDao = remember(context) {
+        AppDatabase.getDatabase(context).produtoDao()
+    }
+
+    var produtos by remember {
+        mutableStateOf<List<Produto>>(emptyList())
+    }
+
+    var carregando by remember {
+        mutableStateOf(true)
+    }
+
+    LaunchedEffect(Unit) {
+        carregando = true
+
+        try {
+            val lista = withContext(Dispatchers.IO) {
+                produtoDao.buscarTodos()
+            }
+
+            produtos = lista
+
+            DadosProdutos.produtos.clear()
+            DadosProdutos.produtos.addAll(lista)
+
+        } catch (e: Exception) {
+            Log.e(
+                "RoomProduto",
+                "Erro ao carregar recomendações",
+                e
+            )
+        } finally {
+            carregando = false
+        }
+    }
+
+    val produtosRecomendados = produtos.filter { produto ->
+        itens.none { item ->
+            item.produto.id == produto.id
+        }
     }
 
     BoxWithConstraints(
@@ -40,7 +85,6 @@ fun CarrinhoScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-
             item {
                 Text(
                     text = "Meu Carrinho",
@@ -50,18 +94,16 @@ fun CarrinhoScreen(
             }
 
             if (itens.isEmpty()) {
-
                 item {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
                             .heightIn(
-                                min = (alturaDisponivel * 0.38f)
+                                min = alturaDisponivel * 0.38f
                             ),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center
                     ) {
-
                         Icon(
                             imageVector = Icons.Default.ShoppingCart,
                             contentDescription = null,
@@ -78,21 +120,18 @@ fun CarrinhoScreen(
                         Button(
                             onClick = onCatalogoClick,
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = Color.Red
+                                containerColor = vinho
                             )
                         ) {
                             Text("Ver produtos")
                         }
                     }
                 }
-
             } else {
-
                 items(
                     items = itens,
                     key = { it.produto.id }
                 ) { item ->
-
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(
@@ -105,11 +144,9 @@ fun CarrinhoScreen(
                                 .padding(16.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-
                             Column(
                                 modifier = Modifier.weight(1f)
                             ) {
-
                                 Text(
                                     text = item.produto.nome,
                                     fontWeight = FontWeight.Bold,
@@ -128,7 +165,7 @@ fun CarrinhoScreen(
                                         "R$ %.2f",
                                         item.produto.preco * item.quantidade
                                     ),
-                                    color = Color(0xFFA62A2A),
+                                    color = vinho,
                                     fontWeight = FontWeight.Bold
                                 )
                             }
@@ -143,7 +180,7 @@ fun CarrinhoScreen(
                                 Icon(
                                     imageVector = Icons.Default.Delete,
                                     contentDescription = "Remover do carrinho",
-                                    tint = Color.Red
+                                    tint = vinho
                                 )
                             }
                         }
@@ -159,7 +196,6 @@ fun CarrinhoScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-
                         Text(
                             text = "Total:",
                             fontSize = 20.sp,
@@ -174,7 +210,7 @@ fun CarrinhoScreen(
                             ),
                             fontSize = 22.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFFA62A2A)
+                            color = vinho
                         )
                     }
 
@@ -182,14 +218,23 @@ fun CarrinhoScreen(
 
                     Button(
                         onClick = onCatalogoClick,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = vinho
+                        )
                     ) {
                         Text("Continuar comprando")
                     }
                 }
             }
 
-            if (produtosRecomendados.isNotEmpty()) {
+            if (carregando) {
+                item {
+                    CircularProgressIndicator(
+                        color = vinho
+                    )
+                }
+            } else if (produtosRecomendados.isNotEmpty()) {
 
                 item {
                     Spacer(modifier = Modifier.height(8.dp))
@@ -202,7 +247,6 @@ fun CarrinhoScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-
                         Text(
                             text = "Você também pode gostar",
                             fontSize = 18.sp,
@@ -220,14 +264,11 @@ fun CarrinhoScreen(
                 items(
                     items = produtosRecomendados.chunked(2)
                 ) { linha ->
-
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-
                         linha.forEach { produto ->
-
                             Card(
                                 onClick = {
                                     onProdutoClick(produto.id)
@@ -240,12 +281,10 @@ fun CarrinhoScreen(
                                     defaultElevation = 2.dp
                                 )
                             ) {
-
                                 Column(
                                     modifier = Modifier.padding(12.dp),
                                     verticalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-
                                     Box(
                                         modifier = Modifier
                                             .fillMaxWidth()
@@ -272,14 +311,14 @@ fun CarrinhoScreen(
                                             "R$ %.2f",
                                             produto.preco
                                         ),
-                                        color = Color(0xFFA62A2A),
+                                        color = vinho,
                                         fontWeight = FontWeight.Bold
                                     )
 
                                     Text(
                                         text = "Ver produto →",
                                         style = MaterialTheme.typography.labelMedium,
-                                        color = Color(0xFFD32F2F)
+                                        color = vinho
                                     )
                                 }
                             }
