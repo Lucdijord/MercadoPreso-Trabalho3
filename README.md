@@ -27,7 +27,7 @@ As dependências já estão configuradas nos arquivos Gradle. Não é necessári
 1. Clone o repositório:
 
 
-git clone URL_DO_REPOSITORIO
+  git clone https://github.com/Lucdijord/MercadoPreso-Trabalho3
 
 
 1. Abra a pasta do projeto no Android Studio.
