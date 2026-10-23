@@ -1,40 +1,42 @@
-package Telas
+package com.example.myapplication.Telas
 
-import Banco.AppDatabase
-import Banco.DadosProdutos
-import Banco.Produto
+import com.example.myapplication.Banco.AppDatabase
+import com.example.myapplication.Banco.DadosEnderecos
+import com.example.myapplication.Banco.Endereco
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @Composable
-fun AdicionarProdutoScreen(
+fun AdicionarEnderecoScreen(
     onVoltar: () -> Unit
 ) {
-    var nome by remember { mutableStateOf("") }
-    var preco by remember { mutableStateOf("") }
-    var categoria by remember { mutableStateOf("") }
-    var salvando by remember { mutableStateOf(false) }
+    var rua by remember { mutableStateOf("") }
+    var numero by remember { mutableStateOf("") }
+    var bairro by remember { mutableStateOf("") }
+    var cidade by remember { mutableStateOf("") }
+    var complemento by remember { mutableStateOf("") }
+
+    var salvando by remember {
+        mutableStateOf(false)
+    }
 
     val context = LocalContext.current
-    val produtoDao = remember(context) {
-        AppDatabase.getDatabase(context).produtoDao()
+
+    val enderecoDao = remember(context) {
+        AppDatabase.getDatabase(context).enderecoDao()
     }
 
     Column(
@@ -42,81 +44,96 @@ fun AdicionarProdutoScreen(
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
 
         Text(
-            text = "Adicionar Produto",
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold
+            text = "Adicionar Endereço",
+            style = MaterialTheme.typography.headlineSmall
         )
 
         OutlinedTextField(
-            value = nome,
-            onValueChange = { nome = it },
-            label = { Text("Nome do produto") },
+            value = rua,
+            onValueChange = { rua = it },
+            label = { Text("Rua") },
             modifier = Modifier.fillMaxWidth()
         )
 
         OutlinedTextField(
-            value = preco,
-            onValueChange = { preco = it },
-            label = { Text("Preço") },
-            keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Decimal
-            ),
+            value = numero,
+            onValueChange = { numero = it },
+            label = { Text("Número") },
             modifier = Modifier.fillMaxWidth()
         )
 
         OutlinedTextField(
-            value = categoria,
-            onValueChange = { categoria = it },
-            label = { Text("Categoria") },
+            value = bairro,
+            onValueChange = { bairro = it },
+            label = { Text("Bairro") },
             modifier = Modifier.fillMaxWidth()
         )
+
+        OutlinedTextField(
+            value = cidade,
+            onValueChange = { cidade = it },
+            label = { Text("Cidade") },
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        OutlinedTextField(
+            value = complemento,
+            onValueChange = { complemento = it },
+            label = { Text("Complemento (opcional)") },
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
 
         Button(
             onClick = {
-                val valor = preco.replace(",", ".").toDoubleOrNull()
 
                 if (
-                    nome.isBlank() ||
-                    categoria.isBlank() ||
-                    valor == null ||
-                    !valor.isFinite() ||
-                    valor <= 0
+                    rua.isBlank() ||
+                    numero.isBlank() ||
+                    bairro.isBlank() ||
+                    cidade.isBlank()
                 ) {
                     Toast.makeText(
                         context,
-                        "Preencha os campos corretamente!",
+                        "Preencha os campos obrigatórios!",
                         Toast.LENGTH_SHORT
                     ).show()
 
                 } else {
+
                     salvando = true
 
-                    val produto = Produto(
+                    val endereco = Endereco(
                         id = 0,
-                        nome = nome.trim(),
-                        preco = valor,
-                        categoria = categoria.trim()
+                        rua = rua.trim(),
+                        numero = numero.trim(),
+                        bairro = bairro.trim(),
+                        cidade = cidade.trim(),
+                        complemento = complemento.trim()
                     )
 
                     CoroutineScope(Dispatchers.IO).launch {
-                        try {
-                            produtoDao.inserir(produto)
 
-                            val lista = produtoDao.buscarTodos()
+                        try {
+                            enderecoDao.inserir(endereco)
+
+                            val lista = enderecoDao.buscarTodos()
 
                             withContext(Dispatchers.Main) {
-                                DadosProdutos.produtos.clear()
-                                DadosProdutos.produtos.addAll(lista)
+
+                                DadosEnderecos.enderecos.clear()
+                                DadosEnderecos.enderecos.addAll(lista)
 
                                 salvando = false
 
                                 Toast.makeText(
                                     context,
-                                    "Produto cadastrado!",
+                                    "Endereço cadastrado!",
                                     Toast.LENGTH_SHORT
                                 ).show()
 
@@ -124,18 +141,20 @@ fun AdicionarProdutoScreen(
                             }
 
                         } catch (e: Exception) {
+
                             Log.e(
-                                "RoomProduto",
-                                "Erro ao inserir produto",
+                                "RoomEndereco",
+                                "Erro ao cadastrar endereço",
                                 e
                             )
 
                             withContext(Dispatchers.Main) {
+
                                 salvando = false
 
                                 Toast.makeText(
                                     context,
-                                    "Erro ao cadastrar produto!",
+                                    "Erro ao cadastrar endereço!",
                                     Toast.LENGTH_SHORT
                                 ).show()
                             }
@@ -150,10 +169,11 @@ fun AdicionarProdutoScreen(
                 contentColor = Color.White
             )
         ) {
+
             if (salvando) {
                 Text("Salvando...")
             } else {
-                Text("Salvar Produto")
+                Text("Salvar Endereço")
             }
         }
     }

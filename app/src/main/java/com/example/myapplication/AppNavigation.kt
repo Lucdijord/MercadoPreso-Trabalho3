@@ -1,15 +1,15 @@
 
 package com.example.myapplication
 
-import Telas.AdicionarEnderecoScreen
-import Telas.AdicionarProdutoScreen
-import Telas.CarrinhoScreen
-import Telas.CatalogScreen
-import Telas.DetalheEnderecoScreen
-import Telas.DetalheProdutoScreen
-import Telas.EnderecosScreen
-import Telas.HomeScreen
-import Telas.ProfileScreen
+import com.example.myapplication.Telas.AdicionarEnderecoScreen
+import com.example.myapplication.Telas.AdicionarProdutoScreen
+import com.example.myapplication.Telas.CarrinhoScreen
+import com.example.myapplication.Telas.CatalogScreen
+import com.example.myapplication.Telas.DetalheEnderecoScreen
+import com.example.myapplication.Telas.DetalheProdutoScreen
+import com.example.myapplication.Telas.EnderecosScreen
+import com.example.myapplication.Telas.HomeScreen
+import com.example.myapplication.Telas.ProfileScreen
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons

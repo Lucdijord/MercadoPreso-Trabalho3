@@ -1,7 +1,7 @@
 
 package com.example.myapplication
 
-import Banco.Produto
+import com.example.myapplication.Banco.Produto
 import androidx.compose.runtime.mutableStateListOf
 
 data class ItemCarrinho(

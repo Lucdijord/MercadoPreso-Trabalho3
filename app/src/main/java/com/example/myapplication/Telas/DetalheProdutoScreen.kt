@@ -1,7 +1,7 @@
-package Telas
+package com.example.myapplication.Telas
 
-import Banco.AppDatabase
-import Banco.Produto
+import com.example.myapplication.Banco.AppDatabase
+import com.example.myapplication.Banco.Produto
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.layout.*

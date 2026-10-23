@@ -1,4 +1,4 @@
-package Telas
+package com.example.myapplication.Telas
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*

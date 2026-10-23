@@ -1,4 +1,4 @@
-package Banco
+package com.example.myapplication.Banco
 
 import androidx.room.Dao
 import androidx.room.Delete
