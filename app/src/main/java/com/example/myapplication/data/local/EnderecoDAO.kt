@@ -1,10 +1,11 @@
-package com.example.myapplication.Banco
+package com.example.myapplication.data.local
 
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Update
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface EnderecoDAO {
@@ -22,4 +23,7 @@ interface EnderecoDAO {
 
     @Delete
     suspend fun deletar(endereco: Endereco)
+
+    @Query("SELECT * FROM enderecos")
+    fun observarTodos(): Flow<List<Endereco>>
 }

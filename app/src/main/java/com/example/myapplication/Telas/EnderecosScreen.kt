@@ -1,8 +1,5 @@
 package com.example.myapplication.Telas
 
-import com.example.myapplication.Banco.AppDatabase
-import com.example.myapplication.Banco.DadosEnderecos
-import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -19,224 +16,78 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.myapplication.ui.enderecos.EnderecoViewModel
 
 @Composable
 fun EnderecosScreen(
+    viewModel: EnderecoViewModel,
     onAdicionarClick: () -> Unit,
     onEnderecoClick: (Int) -> Unit,
     onVoltar: () -> Unit
 ) {
     val vinho = Color(0xFF9D2438)
     val context = LocalContext.current
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    var removendoId by remember { mutableStateOf<Int?>(null) }
 
-    val enderecoDao = remember(context) {
-        AppDatabase.getDatabase(context).enderecoDao()
-    }
-
-    // Lista auxiliar sincronizada com o Room
-    val enderecos = DadosEnderecos.enderecos
-
-    var carregando by remember {
-        mutableStateOf(true)
-    }
-
-    var removendoId by remember {
-        mutableStateOf<Int?>(null)
-    }
-
-    LaunchedEffect(Unit) {
-        carregando = true
-
-        try {
-            val lista = withContext(Dispatchers.IO) {
-                enderecoDao.buscarTodos()
-            }
-
-            enderecos.clear()
-            enderecos.addAll(lista)
-
-        } catch (e: Exception) {
-            Log.e(
-                "RoomEndereco",
-                "Erro ao buscar endereços",
-                e
-            )
-
-            Toast.makeText(
-                context,
-                "Erro ao carregar endereços!",
-                Toast.LENGTH_SHORT
-            ).show()
-
-        } finally {
-            carregando = false
-        }
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
-
-        Text(
-            text = "Endereços cadastrados",
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold
-        )
-
+    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+        Text("Endereços cadastrados", fontSize = 20.sp, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(16.dp))
-
         Button(
             onClick = onAdicionarClick,
             modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = vinho,
-                contentColor = Color.White
-            )
-        ) {
-            Text("Adicionar Endereço")
-        }
-
+            colors = ButtonDefaults.buttonColors(containerColor = vinho, contentColor = Color.White)
+        ) { Text("Adicionar Endereço") }
         Spacer(modifier = Modifier.height(16.dp))
 
-        if (carregando) {
-
-            Box(
-                modifier = Modifier.fillMaxWidth(),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator(
-                    color = vinho
-                )
+        if (uiState.carregandoLista) {
+            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = vinho)
             }
-
-        } else if (enderecos.isEmpty()) {
-
-            Text(
-                text = "Nenhum endereço cadastrado.",
-                color = Color.Gray
-            )
-
+        } else if (uiState.erroLista) {
+            Text("Erro ao carregar endereços.", color = Color.Gray)
+        } else if (uiState.listaDeEnderecos.isEmpty()) {
+            Text("Nenhum endereço cadastrado.", color = Color.Gray)
         } else {
-
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(10.dp),
                 contentPadding = PaddingValues(bottom = 16.dp)
             ) {
-
-                items(
-                    items = enderecos,
-                    key = { it.id }
-                ) { endereco ->
-
+                items(items = uiState.listaDeEnderecos, key = { it.id }) { endereco ->
                     Card(
-                        onClick = {
-                            onEnderecoClick(endereco.id)
-                        },
+                        onClick = { onEnderecoClick(endereco.id) },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = Color.White
-                        ),
-                        elevation = CardDefaults.cardElevation(
-                            defaultElevation = 2.dp
-                        )
+                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                     ) {
-
                         Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
+                            modifier = Modifier.fillMaxWidth().padding(16.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-
-                            Column(
-                                modifier = Modifier.weight(1f)
-                            ) {
-
-                                Text(
-                                    text = endereco.rua,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 16.sp
-                                )
-
-                                Spacer(
-                                    modifier = Modifier.height(4.dp)
-                                )
-
-                                Text(
-                                    text = "Nº ${endereco.numero}"
-                                )
-
-                                Text(
-                                    text = endereco.bairro
-                                )
-
-                                Text(
-                                    text = endereco.cidade,
-                                    color = Color.Gray
-                                )
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(endereco.rua, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text("Nº ${endereco.numero}")
+                                Text(endereco.bairro)
+                                Text(endereco.cidade, color = Color.Gray)
                             }
-
                             IconButton(
                                 enabled = removendoId == null,
                                 onClick = {
                                     removendoId = endereco.id
-
-                                    CoroutineScope(Dispatchers.IO).launch {
-
-                                        try {
-                                            enderecoDao.deletar(endereco)
-
-                                            val lista = enderecoDao.buscarTodos()
-
-                                            withContext(Dispatchers.Main) {
-
-                                                enderecos.clear()
-                                                enderecos.addAll(lista)
-
-                                                removendoId = null
-
-                                                Toast.makeText(
-                                                    context,
-                                                    "Endereço removido!",
-                                                    Toast.LENGTH_SHORT
-                                                ).show()
-                                            }
-
-                                        } catch (e: Exception) {
-
-                                            Log.e(
-                                                "RoomEndereco",
-                                                "Erro ao remover endereço",
-                                                e
-                                            )
-
-                                            withContext(Dispatchers.Main) {
-
-                                                removendoId = null
-
-                                                Toast.makeText(
-                                                    context,
-                                                    "Erro ao remover endereço!",
-                                                    Toast.LENGTH_SHORT
-                                                ).show()
-                                            }
-                                        }
+                                    viewModel.onDelete(endereco) { sucesso ->
+                                        removendoId = null
+                                        Toast.makeText(
+                                            context,
+                                            if (sucesso) "Endereço removido!" else "Erro ao remover endereço!",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
                                     }
                                 }
                             ) {
-
-                                Icon(
-                                    imageVector = Icons.Default.Delete,
-                                    contentDescription = "Remover endereço",
-                                    tint = vinho
-                                )
+                                Icon(Icons.Default.Delete, contentDescription = "Remover endereço", tint = vinho)
                             }
                         }
                     }

@@ -1,9 +1,7 @@
 package com.example.myapplication.Telas
 
-import com.example.myapplication.Banco.AppDatabase
-import com.example.myapplication.Banco.DadosProdutos
-import com.example.myapplication.Banco.Produto
-import android.util.Log
+import com.example.myapplication.ui.produtos.ProdutoViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -18,24 +16,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 @Composable
 fun AdicionarProdutoScreen(
+    viewModel: ProdutoViewModel,
     onVoltar: () -> Unit
 ) {
-    var nome by remember { mutableStateOf("") }
-    var preco by remember { mutableStateOf("") }
-    var categoria by remember { mutableStateOf("") }
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var salvando by remember { mutableStateOf(false) }
-
     val context = LocalContext.current
-    val produtoDao = remember(context) {
-        AppDatabase.getDatabase(context).produtoDao()
-    }
 
     Column(
         modifier = Modifier
@@ -52,15 +41,15 @@ fun AdicionarProdutoScreen(
         )
 
         OutlinedTextField(
-            value = nome,
-            onValueChange = { nome = it },
+            value = uiState.nome,
+            onValueChange = viewModel::onNomeChange,
             label = { Text("Nome do produto") },
             modifier = Modifier.fillMaxWidth()
         )
 
         OutlinedTextField(
-            value = preco,
-            onValueChange = { preco = it },
+            value = uiState.preco,
+            onValueChange = viewModel::onPrecoChange,
             label = { Text("Preço") },
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Decimal
@@ -69,77 +58,23 @@ fun AdicionarProdutoScreen(
         )
 
         OutlinedTextField(
-            value = categoria,
-            onValueChange = { categoria = it },
+            value = uiState.categoria,
+            onValueChange = viewModel::onCategoriaChange,
             label = { Text("Categoria") },
             modifier = Modifier.fillMaxWidth()
         )
 
         Button(
             onClick = {
-                val valor = preco.replace(",", ".").toDoubleOrNull()
-
-                if (
-                    nome.isBlank() ||
-                    categoria.isBlank() ||
-                    valor == null ||
-                    !valor.isFinite() ||
-                    valor <= 0
-                ) {
-                    Toast.makeText(
-                        context,
-                        "Preencha os campos corretamente!",
-                        Toast.LENGTH_SHORT
-                    ).show()
-
+                val valor = uiState.preco.replace(",", ".").toDoubleOrNull()
+                if (uiState.nome.isBlank() || uiState.categoria.isBlank() || valor == null || !valor.isFinite() || valor <= 0) {
+                    Toast.makeText(context, "Preencha os campos corretamente!", Toast.LENGTH_SHORT).show()
                 } else {
                     salvando = true
-
-                    val produto = Produto(
-                        id = 0,
-                        nome = nome.trim(),
-                        preco = valor,
-                        categoria = categoria.trim()
-                    )
-
-                    CoroutineScope(Dispatchers.IO).launch {
-                        try {
-                            produtoDao.inserir(produto)
-
-                            val lista = produtoDao.buscarTodos()
-
-                            withContext(Dispatchers.Main) {
-                                DadosProdutos.produtos.clear()
-                                DadosProdutos.produtos.addAll(lista)
-
-                                salvando = false
-
-                                Toast.makeText(
-                                    context,
-                                    "Produto cadastrado!",
-                                    Toast.LENGTH_SHORT
-                                ).show()
-
-                                onVoltar()
-                            }
-
-                        } catch (e: Exception) {
-                            Log.e(
-                                "RoomProduto",
-                                "Erro ao inserir produto",
-                                e
-                            )
-
-                            withContext(Dispatchers.Main) {
-                                salvando = false
-
-                                Toast.makeText(
-                                    context,
-                                    "Erro ao cadastrar produto!",
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                            }
-                        }
+                    viewModel.onSave { sucesso ->
+                        salvando = false
+                        Toast.makeText(context, if (sucesso) "Produto cadastrado!" else "Erro ao cadastrar produto!", Toast.LENGTH_SHORT).show()
+                        if (sucesso) onVoltar()
                     }
                 }
             },

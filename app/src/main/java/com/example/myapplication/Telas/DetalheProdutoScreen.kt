@@ -1,76 +1,34 @@
 package com.example.myapplication.Telas
 
-import com.example.myapplication.Banco.AppDatabase
-import com.example.myapplication.Banco.Produto
-import android.util.Log
-import android.widget.Toast
+import com.example.myapplication.data.local.Produto
+import com.example.myapplication.ui.produtos.ProdutoViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import java.util.Locale
 
 @Composable
 fun DetalheProdutoScreen(
     produtoId: Int,
+    viewModel: ProdutoViewModel,
     onVoltar: () -> Unit,
     onAdicionarCarrinho: (Produto, Int) -> Unit
 ) {
-    val context = LocalContext.current
     val vinho = Color(0xFF9D2438)
-
-    val produtoDao = remember(context) {
-        AppDatabase.getDatabase(context).produtoDao()
-    }
-
-    var produto by remember(produtoId) {
-        mutableStateOf<Produto?>(null)
-    }
-
-    var carregando by remember(produtoId) {
-        mutableStateOf(true)
-    }
-
-    var quantidade by remember(produtoId) {
-        mutableStateOf(1)
-    }
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val produto = uiState.produtoDetalhe
+    val carregando = uiState.carregandoDetalhe
+    var quantidade by remember(produtoId) { mutableStateOf(1) }
 
     LaunchedEffect(produtoId) {
-
-        carregando = true
-
-        try {
-            val resultado = withContext(Dispatchers.IO) {
-                produtoDao.buscarPorId(produtoId)
-            }
-
-            produto = resultado
-
-        } catch (e: Exception) {
-
-            Log.e(
-                "RoomProduto",
-                "Erro ao buscar produto",
-                e
-            )
-
-            Toast.makeText(
-                context,
-                "Erro ao carregar produto!",
-                Toast.LENGTH_SHORT
-            ).show()
-
-        } finally {
-            carregando = false
-        }
+        viewModel.carregarDetalheProduto(produtoId)
     }
 
     Column(
@@ -88,7 +46,7 @@ fun DetalheProdutoScreen(
 
         } else if (produto == null) {
 
-            Text("Produto não encontrado.")
+            Text(if (uiState.erroDetalhe) "Erro ao carregar produto." else "Produto não encontrado.")
 
             Button(
                 onClick = onVoltar,

@@ -1,9 +1,5 @@
 package com.example.myapplication.Telas
 
-import com.example.myapplication.Banco.AppDatabase
-import com.example.myapplication.Banco.DadosProdutos
-import com.example.myapplication.Banco.Produto
-import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
@@ -24,10 +20,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.myapplication.DadosCarrinho
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import com.example.myapplication.ui.produtos.ProdutoViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import java.util.Locale
 
 private val VinhoCatalogo = Color(0xFF9D2438)
@@ -35,6 +29,7 @@ private val FundoCatalogo = Color(0xFFFFF8F5)
 
 @Composable
 fun CatalogScreen(
+    viewModel: ProdutoViewModel,
     onAdicionarClick: () -> Unit,
     onProdutoClick: (Int) -> Unit,
     pesquisaInicial: String = "",
@@ -52,54 +47,12 @@ fun CatalogScreen(
         mutableStateOf(true)
     }
 
-    // Lista carregada do banco
-    var produtos by remember {
-        mutableStateOf<List<Produto>>(emptyList())
-    }
-
-    var carregando by remember {
-        mutableStateOf(true)
-    }
-
-    var excluindoId by remember {
-        mutableStateOf<Int?>(null)
-    }
-
+    // A tela observa o UiState; quem acessa o banco é o ViewModel/Repository.
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val produtos = uiState.listaDeProdutos
+    val carregando = uiState.carregando
+    var excluindoId by remember { mutableStateOf<Int?>(null) }
     val context = LocalContext.current
-    val produtoDao = remember(context) {
-        AppDatabase.getDatabase(context).produtoDao()
-    }
-
-    LaunchedEffect(Unit) {
-        carregando = true
-
-        try {
-            val lista = withContext(Dispatchers.IO) {
-                produtoDao.buscarTodos()
-            }
-
-            produtos = lista
-
-            DadosProdutos.produtos.clear()
-            DadosProdutos.produtos.addAll(lista)
-
-        } catch (e: Exception) {
-            Log.e(
-                "RoomProduto",
-                "Erro ao buscar produtos",
-                e
-            )
-
-            Toast.makeText(
-                context,
-                "Erro ao carregar produtos!",
-                Toast.LENGTH_SHORT
-            ).show()
-
-        } finally {
-            carregando = false
-        }
-    }
 
     val categorias = (
             listOf("Todos", "Eletrônicos", "Casa", "Beleza") +
@@ -371,47 +324,16 @@ fun CatalogScreen(
                                 enabled = excluindoId == null,
                                 onClick = {
                                     excluindoId = produto.id
-
-                                    CoroutineScope(Dispatchers.IO).launch {
-                                        try {
-                                            produtoDao.deletar(produto)
-
-                                            val lista = produtoDao.buscarTodos()
-
-                                            withContext(Dispatchers.Main) {
-                                                produtos = lista
-
-                                                DadosProdutos.produtos.clear()
-                                                DadosProdutos.produtos.addAll(lista)
-
-                                                DadosCarrinho.remover(produto.id)
-
-                                                excluindoId = null
-
-                                                Toast.makeText(
-                                                    context,
-                                                    "Produto removido!",
-                                                    Toast.LENGTH_SHORT
-                                                ).show()
-                                            }
-
-                                        } catch (e: Exception) {
-                                            Log.e(
-                                                "RoomProduto",
-                                                "Erro ao excluir produto",
-                                                e
-                                            )
-
-                                            withContext(Dispatchers.Main) {
-                                                excluindoId = null
-
-                                                Toast.makeText(
-                                                    context,
-                                                    "Erro ao excluir produto!",
-                                                    Toast.LENGTH_SHORT
-                                                ).show()
-                                            }
+                                    viewModel.onDelete(produto) { sucesso ->
+                                        excluindoId = null
+                                        if (sucesso) {
+                                            DadosCarrinho.remover(produto.id)
                                         }
+                                        Toast.makeText(
+                                            context,
+                                            if (sucesso) "Produto removido!" else "Erro ao excluir produto!",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
                                     }
                                 }
                             ) {

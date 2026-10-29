@@ -1,9 +1,5 @@
 package com.example.myapplication.Telas
 
-import com.example.myapplication.Banco.AppDatabase
-import com.example.myapplication.Banco.DadosProdutos
-import com.example.myapplication.Banco.Produto
-import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -23,15 +19,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.myapplication.R
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.myapplication.ui.produtos.ProdutoViewModel
 import java.util.Locale
 
 private val VinhoHome = Color(0xFF9D2438)
@@ -39,6 +34,7 @@ private val FundoHome = Color(0xFFFFF8F5)
 
 @Composable
 fun HomeScreen(
+    viewModel: ProdutoViewModel,
     onCatalogoClick: () -> Unit,
     onPesquisarClick: (String) -> Unit,
     onCategoriaClick: (String) -> Unit,
@@ -48,43 +44,9 @@ fun HomeScreen(
         mutableStateOf("")
     }
 
-    var produtos by remember {
-        mutableStateOf<List<Produto>>(emptyList())
-    }
-
-    var carregando by remember {
-        mutableStateOf(true)
-    }
-
-    val context = LocalContext.current
-
-    val produtoDao = remember(context) {
-        AppDatabase.getDatabase(context).produtoDao()
-    }
-
-    LaunchedEffect(Unit) {
-        carregando = true
-
-        try {
-            val lista = withContext(Dispatchers.IO) {
-                produtoDao.buscarTodos()
-            }
-
-            produtos = lista
-
-            DadosProdutos.produtos.clear()
-            DadosProdutos.produtos.addAll(lista)
-
-        } catch (e: Exception) {
-            Log.e(
-                "RoomProduto",
-                "Erro ao carregar produtos da Home",
-                e
-            )
-        } finally {
-            carregando = false
-        }
-    }
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val produtos = uiState.listaDeProdutos
+    val carregando = uiState.carregando
 
     Column(
         modifier = Modifier

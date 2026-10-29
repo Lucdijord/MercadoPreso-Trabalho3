@@ -1,9 +1,5 @@
 package com.example.myapplication.Telas
 
-import com.example.myapplication.Banco.AppDatabase
-import com.example.myapplication.Banco.DadosProdutos
-import com.example.myapplication.Banco.Produto
-import android.util.Log
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -16,17 +12,17 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.myapplication.DadosCarrinho
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.myapplication.ui.produtos.ProdutoViewModel
 import java.util.Locale
 
 @Composable
 fun CarrinhoScreen(
+    viewModel: ProdutoViewModel,
     onCatalogoClick: () -> Unit,
     onProdutoClick: (Int) -> Unit
 ) {
@@ -34,43 +30,9 @@ fun CarrinhoScreen(
     val formatoBrasil = Locale.forLanguageTag("pt-BR")
     val vinho = Color(0xFF9D2438)
 
-    val context = LocalContext.current
-
-    val produtoDao = remember(context) {
-        AppDatabase.getDatabase(context).produtoDao()
-    }
-
-    var produtos by remember {
-        mutableStateOf<List<Produto>>(emptyList())
-    }
-
-    var carregando by remember {
-        mutableStateOf(true)
-    }
-
-    LaunchedEffect(Unit) {
-        carregando = true
-
-        try {
-            val lista = withContext(Dispatchers.IO) {
-                produtoDao.buscarTodos()
-            }
-
-            produtos = lista
-
-            DadosProdutos.produtos.clear()
-            DadosProdutos.produtos.addAll(lista)
-
-        } catch (e: Exception) {
-            Log.e(
-                "RoomProduto",
-                "Erro ao carregar recomendações",
-                e
-            )
-        } finally {
-            carregando = false
-        }
-    }
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val produtos = uiState.listaDeProdutos
+    val carregando = uiState.carregando
 
     val produtosRecomendados = produtos.filter { produto ->
         itens.none { item ->

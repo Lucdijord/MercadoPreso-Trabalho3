@@ -21,6 +21,15 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.myapplication.data.local.AppDatabase
+import com.example.myapplication.data.repository.ProdutoRepository
+import com.example.myapplication.data.repository.EnderecoRepository
+import com.example.myapplication.ui.enderecos.EnderecoViewModel
+import com.example.myapplication.ui.enderecos.EnderecoViewModelFactory
+import com.example.myapplication.ui.produtos.ProdutoViewModel
+import com.example.myapplication.ui.produtos.ProdutoViewModelFactory
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.navigation.NavType
@@ -33,6 +42,21 @@ import androidx.compose.ui.unit.sp
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppNavigation() {
+
+    val context = LocalContext.current.applicationContext
+    val produtoFactory = remember(context) {
+        ProdutoViewModelFactory(
+            ProdutoRepository(AppDatabase.getDatabase(context).produtoDao())
+        )
+    }
+    val produtoViewModel: ProdutoViewModel = viewModel(factory = produtoFactory)
+
+    val enderecoFactory = remember(context) {
+        EnderecoViewModelFactory(
+            EnderecoRepository(AppDatabase.getDatabase(context).enderecoDao())
+        )
+    }
+    val enderecoViewModel: EnderecoViewModel = viewModel(factory = enderecoFactory)
 
     val navController = rememberNavController()
     val telaAtual by navController.currentBackStackEntryAsState()
@@ -246,6 +270,7 @@ fun AppNavigation() {
 
             composable(Rotas.INICIO) {
                 HomeScreen(
+                    viewModel = produtoViewModel,
                     onCatalogoClick = {
                         abrirCatalogo()
                     },
@@ -268,6 +293,7 @@ fun AppNavigation() {
 
             composable(Rotas.CATALOGO) {
                 CatalogScreen(
+                    viewModel = produtoViewModel,
                     pesquisaInicial = pesquisaCatalogo,
                     categoriaInicial = categoriaCatalogo,
 
@@ -287,6 +313,7 @@ fun AppNavigation() {
 
             composable(Rotas.ADICIONAR_PRODUTO) {
                 AdicionarProdutoScreen(
+                    viewModel = produtoViewModel,
                     onVoltar = {
                         navController.popBackStack()
                     }
@@ -307,6 +334,7 @@ fun AppNavigation() {
 
                 DetalheProdutoScreen(
                     produtoId = id,
+                    viewModel = produtoViewModel,
 
                     onVoltar = {
                         navController.popBackStack()
@@ -330,6 +358,7 @@ fun AppNavigation() {
 
             composable(Rotas.CARRINHO) {
                 CarrinhoScreen(
+                    viewModel = produtoViewModel,
                     onCatalogoClick = {
                         abrirCatalogo()
                     },
@@ -357,6 +386,7 @@ fun AppNavigation() {
 
             composable(Rotas.ENDERECOS) {
                 EnderecosScreen(
+                    viewModel = enderecoViewModel,
                     onAdicionarClick = {
                         navController.navigate(
                             Rotas.ADICIONAR_ENDERECO
@@ -377,6 +407,7 @@ fun AppNavigation() {
 
             composable(Rotas.ADICIONAR_ENDERECO) {
                 AdicionarEnderecoScreen(
+                    viewModel = enderecoViewModel,
                     onVoltar = {
                         navController.popBackStack()
                     }
@@ -397,7 +428,7 @@ fun AppNavigation() {
 
                 DetalheEnderecoScreen(
                     enderecoId = id,
-
+                    viewModel = enderecoViewModel,
                     onVoltar = {
                         navController.popBackStack()
                     }
