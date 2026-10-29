@@ -1,7 +1,7 @@
 package com.example.myapplication.ui.produtos
 
 import com.example.myapplication.data.local.Produto
-
+// oi
 data class ProdutoUiState(
     val listaDeProdutos: List<Produto> = emptyList(),
     val carregando: Boolean = true,
